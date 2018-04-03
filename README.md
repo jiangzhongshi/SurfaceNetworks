@@ -34,15 +34,25 @@ We prove that these models define shape representations that are stable to defor
  a variational autoencoder framework with encoders/decoders
  given by SNs.
 
+ ## Full Text
+ To appear in the proceedings of CVPR 2018, the preprint pdf is [here](https://cs.nyu.edu/~zhongshi/files/SurfaceNetworks.pdf)
+ 
  ## Source Code
  Source code is hosted on this GitHub repository. Instructions can be read from the argparse options. 
 
  ## Requirements
- 
-pytorch, plyfile, numpy, scipy, progressbar, cupy, pynvrtc
-
-If you are using Python 3, please install pynvrtc [here](https://github.com/jiangzhongshi/pynvrtc).
-
+ ```
+torch==0.3.1.post2
+scipy==1.0.0
+cupy==2.2.0
+numpy==1.14.2
+matplotlib==2.2.2
+plyfile==0.5
+progressbar2==3.36.0
+scikit_learn==0.19.1
+git+https://github.com/jiangzhongshi/pynvrtc@master#egg=pynvrtc
+git+https://github.com/jiangzhongshi/libigl@cluster-pyigl#egg=pyigl
+ ```
 [Python bindings for libigl](https://github.com/libigl/libigl/tree/master/python) is used for geometry processing
 
 ## License
