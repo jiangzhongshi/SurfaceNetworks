@@ -57,17 +57,12 @@ parser.add_argument('--xz-rotate', action='store_true', default=False)
 parser.add_argument('--xy-rotate', action='store_true', default=False)
 parser.add_argument('--complete-test', action='store_true', default=False)
 parser.add_argument('--full-train', action='store_true', default=False)
-#parser.add_argument('--L-power', type=int, default=0, metavar='2^N')
 
 def time_string():
     time = datetime.datetime.now(tz=datetime.timezone(datetime.timedelta(-1, 72000))).strftime("%b-%d-%I:%M%p")
     return f'NewYork {time}'
 from scipy.sparse.linalg import norm as spnorm
 def read_data(seqname, args):
-#    mypath = args.datapath
-#    files = sorted(glob.glob(mypath+'/*.npz'))
-
-#    custom_logging("Loading the dataset")
     with np.load(seqname) as sequence:
         new_sequence = []
         frame = {}
@@ -249,15 +244,12 @@ def loss_fun_delta_cross_entropy(outputs, targetX, targetY):
         loss = loss + F.cross_entropy(outputs[0, :NA, :NB], Variable(GAB))
     return loss/ batch_size
 
-    
-
 def main():
     args = parser.parse_args()
     args.cuda = not args.no_cuda and torch.cuda.is_available()
     if not args.cuda:
         assert False, 'No CUDA'
-    
-    #result_identifier = f'{args.result_prefix}_{args.model}_{args.loss}_{args.layer}_{args.lr}'
+
     result_identifier = args.result_prefix
     
     def custom_logging(stuff):
@@ -324,28 +316,21 @@ def main():
                 
         for j in (range(args.num_updates)):
             
-#            start = time.time()
             inputX, targetX, maskX, OperatorX, facesX = sample_batch(sequences, True, args)
             inputY, targetY, maskY, OperatorY, facesY = sample_batch(sequences, True, args)
-            #torch.cuda.synchronize(); end = time.time(); print(f'sample: {end - start}',file=sys.stderr)
-            #start = time.time()
+
             if 'dir' in args.model:
                 DiX, DiAX = OperatorX
                 DiY, DiAY = OperatorY
                 outputs = model([DiX, DiAX, maskX],[DiY, DiAY, maskY], inputX, inputY)
             else:
                 outputs = model([OperatorX, maskX],[OperatorY, maskY], inputX, inputY)
-            #torch.cuda.synchronize(); end = time.time(); print(f'sample: {end - start}',file=sys.stderr)
-            #start = time.time()
+            
             loss = loss_fun(outputs, targetX, targetY)
-            #torch.cuda.synchronize(); end = time.time(); print(f'sample: {end - start}',file=sys.stderr)
-            #start = time.time()
+            
             early_optimizer.zero_grad()
             loss.backward()
             early_optimizer.step()
-
-#            torch.cuda.synchronize(); end = time.time(); print(f'sample: {end - start}',file=sys.stderr)
-
             loss_value += loss.data[0]
             
             if np.any(np.isnan(outputs.data)):
@@ -354,13 +339,6 @@ def main():
         custom_logging("Train epoch {}, loss {}".format(
             epoch, loss_value / args.num_updates))
     
-#        if epoch > 50 and epoch % 10 == 0:
-#            for param_group in early_optimizer.param_groups:
-#                custom_logging("lr is at {}".format(param_group['lr']))
-#                torch.save(model.state_dict(), f'pts/{result_identifier}_state_at_{epoch}_{param_group["lr"]}.pts')
-#                param_group['lr'] *= 0.5
-                
-        #model.eval()
         loss_value = 0
 
         testing_pairs = list(itertools.product(range(80,100),repeat=2)) + list(itertools.product(range(80,100),range(0,80)))
