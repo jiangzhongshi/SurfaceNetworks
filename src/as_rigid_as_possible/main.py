@@ -2,9 +2,9 @@
 This file is part of source code for "Surface Networks", Ilya Kostrikov, Zhongshi Jiang, Daniele Panozzo, Denis Zorin, Joan Bruna. CVPR 2018.
 
 Copyright (C) 2018 Ilya Kostrikov <kostrikov@cs.nyu.edu> and Zhongshi Jiang <zhongshi@cims.nyu.edu>
- 
-This Source Code Form is subject to the terms of the Mozilla Public License 
-v. 2.0. If a copy of the MPL was not distributed with this file, You can 
+
+This Source Code Form is subject to the terms of the Mozilla Public License
+v. 2.0. If a copy of the MPL was not distributed with this file, You can
 obtain one at http://mozilla.org/MPL/2.0/.
 '''
 
@@ -15,6 +15,8 @@ from plyfile import PlyData, PlyElement
 from os import listdir
 from os.path import isdir, isfile, join
 import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 import utils.graph as graph
 import utils.mesh as mesh
 import utils.utils_pt as utils
@@ -26,7 +28,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import progressbar as pb
-import os
 from models import *
 import pickle
 import time
@@ -62,7 +63,7 @@ def read_data():
     sequences = []
 
     def load_file(seqname):
-        sequence = np.load(open(mypath + "/" + seqname, 'rb'))
+        sequence = np.load(open(mypath + "/" + seqname, 'rb'), encoding='latin1')
         new_sequence = []
         for i, frame in enumerate(sequence):
             frame['V'] = torch.from_numpy(frame['V'])
@@ -85,7 +86,7 @@ def read_data():
 
         if len(sequences) % 100 == 0:
             gc.collect()
-        
+
     return sequences
 
 sequences = read_data()
@@ -195,19 +196,19 @@ def main():
         # Train
         for j in pbar(range(args.num_updates)):
             inputs, targets, mask, laplacian, Di, DiA, faces = sample_batch(sequences, True)
-      
+
             if args.model in ["lap", "avg", "mlp"]:
                 outputs = model(laplacian, mask, inputs)
             else:
                 outputs = model(Di, DiA, mask, inputs)
-       
+
             outputs = outputs * mask.expand_as(outputs)
             loss = F.smooth_l1_loss(outputs, targets, size_average=False) / args.batch_size
-      
+
             early_optimizer.zero_grad()
             loss.backward()
             early_optimizer.step()
- 
+
             loss_value += loss.data[0]
 
         print("Train epoch {}, loss {}".format(
