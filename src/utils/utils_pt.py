@@ -2,9 +2,9 @@
 This file is part of source code for "Surface Networks", Ilya Kostrikov, Zhongshi Jiang, Daniele Panozzo, Denis Zorin, Joan Bruna. CVPR 2018.
 
 Copyright (C) 2018 Ilya Kostrikov <kostrikov@cs.nyu.edu> and Zhongshi Jiang <zhongshi@cims.nyu.edu>
- 
-This Source Code Form is subject to the terms of the Mozilla Public License 
-v. 2.0. If a copy of the MPL was not distributed with this file, You can 
+
+This Source Code Form is subject to the terms of the Mozilla Public License
+v. 2.0. If a copy of the MPL was not distributed with this file, You can
 obtain one at http://mozilla.org/MPL/2.0/.
 '''
 
@@ -18,7 +18,6 @@ import utils.graph as graph
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.autograd import Variable
 
 def sparse_cat(tensors, size0, size1):
     values = []
@@ -55,8 +54,8 @@ def sparse_diag_cat(tensors, size0, size1):
     indices = torch.cat(indices, 1)
     size = torch.Size((len(tensors)*size0, len(tensors)*size1))
     return torch.sparse.FloatTensor(indices, values, size).coalesce()
-        
-    
+
+
 def sp_sparse_to_pt_sparse(L):
     """
     Converts a scipy matrix into a pytorch one.
@@ -137,7 +136,7 @@ class LapResNet2(nn.Module):
     def forward(self, L, mask, inputs):
         x = inputs
         x = F.elu(x)
-        
+
         batch, node, dim = x.size()
         Lx = torch.mm(L, x.view(-1, dim)).view(batch, node, dim)
         xs = [x, Lx]
@@ -196,7 +195,7 @@ class AvgResNet2(nn.Module):
     def forward(self, L, mask, inputs):
         x = inputs
         x = F.elu(x)
-        
+
         xs = [x, global_average(x, mask).expand_as(x).contiguous()]
         x = torch.cat(xs, 2)
         x = self.bn_fc0(x)

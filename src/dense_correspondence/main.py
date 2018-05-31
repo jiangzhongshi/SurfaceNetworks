@@ -2,9 +2,9 @@
 This file is part of source code for "Surface Networks", Ilya Kostrikov, Zhongshi Jiang, Daniele Panozzo, Denis Zorin, Joan Bruna. CVPR 2018.
 
 Copyright (C) 2018 Ilya Kostrikov <kostrikov@cs.nyu.edu> and Zhongshi Jiang <zhongshi@cims.nyu.edu>
- 
-This Source Code Form is subject to the terms of the Mozilla Public License 
-v. 2.0. If a copy of the MPL was not distributed with this file, You can 
+
+This Source Code Form is subject to the terms of the Mozilla Public License
+v. 2.0. If a copy of the MPL was not distributed with this file, You can
 obtain one at http://mozilla.org/MPL/2.0/.
 '''
 
@@ -22,7 +22,6 @@ import utils.utils_pt as utils
 import numpy as np
 import scipy as sp
 import argparse
-from torch.autograd import Variable
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
@@ -74,10 +73,10 @@ def read_data(seqname, args):
             frame['L'] = []
             L = sequence['L'].item().astype('f').tocsr()
             idp = L.indptr
-            Dsq = sp.sparse.diags(1/np.sqrt(idp[1:] - idp[:-1] - 1)).astype('f')            
+            Dsq = sp.sparse.diags(1/np.sqrt(idp[1:] - idp[:-1] - 1)).astype('f')
             L = Dsq.dot(L).dot(Dsq).astype('f')
             frame['L'].append(utils.sp_sparse_to_pt_sparse(L).coalesce())
-            
+
             for i in range(2):
                 L = Dsq.dot(L).dot(Dsq).astype('f')
                 L = L.dot(L).tocsr()
@@ -88,7 +87,7 @@ def read_data(seqname, args):
             frame['L'] = utils.sp_sparse_to_pt_sparse(L).coalesce()
         else:
             frame['L'] = None
-            
+
         if 'dir' in args.model:
             frame['Di'] = utils.sp_sparse_to_pt_sparse(sequence['D'].item().astype('f')).coalesce()
             frame['DiA'] = utils.sp_sparse_to_pt_sparse(sequence['DA'].item().astype('f')).coalesce()
@@ -103,7 +102,7 @@ def read_data(seqname, args):
     return frame
 
 def sample_batch(sequences, is_training, args):
-   
+
     indices = []
     offsets = []
 
@@ -153,7 +152,7 @@ def sample_batch(sequences, is_training, args):
         if args.xy_rotate:
             rotate_matrix_xy = lambda t: torch.Tensor([[np.cos(t), np.sin(t), 0], [-np.sin(t), np.cos(t), 0], [0,0,1]])
             inputV = torch.matmul(inputV, rotate_matrix_xy(random.random()*2*np.pi))
-            
+
         inputs[b, :num_vertices, :3] = inputV
 
         targets[b] = (sequence_ind['G'].cuda(),
@@ -162,7 +161,7 @@ def sample_batch(sequences, is_training, args):
 
         mask[b, :num_vertices] = 1
         faces[b, :num_faces] = sequence_ind['F']
-        
+
         if 'amp' in args.model:
             L = sequence_ind['L']
             laplacian.append(L)
@@ -182,12 +181,12 @@ def sample_batch(sequences, is_training, args):
     if 'dir' in args.model:
         Di = utils.sparse_cat(Di, 4 * sample_batch.num_faces, 4 * sample_batch.num_vertices).coalesce()
         DiA = utils.sparse_cat(DiA, 4 * sample_batch.num_vertices, 4 * sample_batch.num_faces).coalesce()
-        Operator = (Variable(Di).cuda(), Variable(DiA).cuda())
+        Operator = ((Di).cuda(), (DiA).cuda())
     elif 'amp' in args.model:
-        Operator = [Variable(lap).cuda() for lap in laplacian]
+        Operator = [(lap).cuda() for lap in laplacian]
     elif 'lap' in args.model:
-        Operator = Variable(laplacian).cuda()
-    return Variable(inputs).cuda(), (targets), Variable(mask).cuda(), Operator, faces
+        Operator = (laplacian).cuda()
+    return (inputs).cuda(), (targets), (mask).cuda(), Operator, faces
 
 sample_batch.num_vertices = 7000
 sample_batch.num_faces = 0
@@ -208,40 +207,34 @@ def aggregate_batch_G(outputs, targetX, targetY):
     FullG = torch.stack(listG)
     return FullG
 
-def loss_fun_l2(outputs, targetX, targetY):
-    FullG = aggregate_batch_G(outputs, targetX, targetY)
-    lossl2 = torch.sqrt(torch.sum((Variable(FullG) - outputs)**2)) / torch.numel(outputs)
-    return lossl2
-
 def loss_fun_sl1(outputs, targetX, targetY):
     FullG = aggregate_batch_G(outputs, targetX, targetY)
-    return F.smooth_l1_loss(outputs, Variable(FullG), size_average=True) / (outputs.size(0))
+    return F.smooth_l1_loss(outputs, (FullG), size_average=True) / (outputs.size(0))
 
 def loss_fun_cross_entropy(outputs, targetX, targetY):
     batch_size = outputs.size(0)
-    loss = Variable(torch.cuda.FloatTensor(1).zero_())
+    loss = (torch.cuda.FloatTensor(1).zero_())
     for i in range(batch_size):
         GA, lA, liA = targetX[i]
         GB, lB, liB = targetY[i]
         NA = lA.size(0)
         NB = lB.size(0)
-        GAB = Variable(GA[:, liA[lB]] + GB[liB[lA],:])
+        GAB = (GA[:, liA[lB]] + GB[liB[lA],:])
         G = F.softmin(GAB, dim = 1)
         loss = loss - torch.dot(G, F.log_softmax(outputs[0,:NA, :NB], dim = 1))
-    
     return loss / batch_size
 
 def loss_fun_delta_cross_entropy(outputs, targetX, targetY):
     batch_size = outputs.size(0)
     listG = []
-    loss = Variable(torch.cuda.FloatTensor(1).zero_())
+    loss = (torch.cuda.FloatTensor(1).zero_())
     for i in range(batch_size):
         GA, lA, liA = targetX[i]
         GB, lB, liB = targetY[i]
         NA = lA.size(0)
         NB = lB.size(0)
         _, GAB = torch.min(GA[:, liA[lB]] + GB[liB[lA],:], dim = 1)
-        loss = loss + F.cross_entropy(outputs[0, :NA, :NB], Variable(GAB))
+        loss = loss + F.cross_entropy(outputs[0, :NA, :NB], (GAB))
     return loss/ batch_size
 
 def main():
@@ -251,7 +244,7 @@ def main():
         assert False, 'No CUDA'
 
     result_identifier = args.result_prefix
-    
+
     def custom_logging(stuff):
         print(f'{result_identifier}::{stuff}', file=sys.stderr) # also to err
         logfile = f'log/{result_identifier}.log'
@@ -290,9 +283,7 @@ def main():
     early_optimizer = optim.Adam(model.parameters(),float(args.lr), weight_decay=1e-5)
     late_optimizer = optim.SGD(model.parameters(), 1e-3, weight_decay=1e-5, momentum=0.9)
 
-    if args.loss == 'l2':
-        loss_fun = loss_fun_l2
-    elif args.loss == 'sl1':
+    if args.loss == 'sl1':
         loss_fun = loss_fun_sl1
     elif args.loss == 'cel':
         loss_fun = loss_fun_cross_entropy
@@ -313,9 +304,9 @@ def main():
                 classname = module.__class__.__name__
             if classname.find('BatchNorm') > -1:
                 module.eval()
-                
+
         for j in (range(args.num_updates)):
-            
+
             inputX, targetX, maskX, OperatorX, facesX = sample_batch(sequences, True, args)
             inputY, targetY, maskY, OperatorY, facesY = sample_batch(sequences, True, args)
 
@@ -325,26 +316,26 @@ def main():
                 outputs = model([DiX, DiAX, maskX],[DiY, DiAY, maskY], inputX, inputY)
             else:
                 outputs = model([OperatorX, maskX],[OperatorY, maskY], inputX, inputY)
-            
+
             loss = loss_fun(outputs, targetX, targetY)
-            
+
             early_optimizer.zero_grad()
             loss.backward()
             early_optimizer.step()
-            loss_value += loss.data[0]
-            
+            loss_value += loss.item()
+
             if np.any(np.isnan(outputs.data)):
                 assert False, (result_identifier, epoch, j)
 
         custom_logging("Train epoch {}, loss {}".format(
             epoch, loss_value / args.num_updates))
-    
+
         loss_value = 0
 
         testing_pairs = list(itertools.product(range(80,100),repeat=2)) + list(itertools.product(range(80,100),range(0,80)))
         if not args.complete_test:
             testing_pairs = random.choices(testing_pairs, k=20)
-            
+
         # Evaluate
         for i, j in testing_pairs:
             sample_batch.test_ind = i
@@ -363,7 +354,7 @@ def main():
             loss = loss_fun(outputs, targetX, targetY)
             loss.backward() # because of a problem with caching
 
-            loss_value += loss.data[0]
+            loss_value += loss.item()
 
         custom_logging("Test epoch {}, loss {}".format(epoch, loss_value / len(testing_pairs)))
 

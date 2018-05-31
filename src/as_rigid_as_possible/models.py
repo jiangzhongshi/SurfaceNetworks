@@ -2,9 +2,9 @@
 This file is part of source code for "Surface Networks", Ilya Kostrikov, Zhongshi Jiang, Daniele Panozzo, Denis Zorin, Joan Bruna. CVPR 2018.
 
 Copyright (C) 2018 Ilya Kostrikov <kostrikov@cs.nyu.edu> and Zhongshi Jiang <zhongshi@cims.nyu.edu>
- 
-This Source Code Form is subject to the terms of the Mozilla Public License 
-v. 2.0. If a copy of the MPL was not distributed with this file, You can 
+
+This Source Code Form is subject to the terms of the Mozilla Public License
+v. 2.0. If a copy of the MPL was not distributed with this file, You can
 obtain one at http://mozilla.org/MPL/2.0/.
 '''
 
@@ -17,7 +17,6 @@ import utils.graph as graph
 import utils.mesh as mesh
 import utils.utils_pt as utils
 import torch.nn.functional as F
-from torch.autograd import Variable
 
 class Model(nn.Module):
 
@@ -129,7 +128,7 @@ class DirModel(nn.Module):
 
         num_faces = DiA.size(2) // 4
 
-        f = Variable(torch.zeros(batch_size, num_faces, 128))
+        f = (torch.zeros(batch_size, num_faces, 128))
         if v.is_cuda:
             f = f.cuda()
 

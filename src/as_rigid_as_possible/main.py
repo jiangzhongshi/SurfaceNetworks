@@ -149,7 +149,7 @@ def sample_batch(sequences, is_training, is_fixed=False):
             Di.append(sequences[ind][offset + input_frames - 1]['Di'])
             DiA.append(sequences[ind][offset + input_frames - 1]['DiA'])
 
-    laplacian = utils.sparse_cat(laplacian, sample_batch.num_vertices, sample_batch.num_vertices)
+    laplacian = utils.sparse_diag_cat(laplacian, sample_batch.num_vertices, sample_batch.num_vertices)
 
     if args.model == "dir":
         Di = utils.sparse_cat(Di, 4 * sample_batch.num_faces, 4 * sample_batch.num_vertices)
@@ -157,11 +157,11 @@ def sample_batch(sequences, is_training, is_fixed=False):
 
     if args.cuda:
         if args.model == "dir":
-            return Variable(inputs).cuda(), Variable(targets).cuda(), Variable(mask).cuda(), Variable(laplacian).cuda(), Variable(Di).cuda(), Variable(DiA).cuda(), faces
+            return (inputs).cuda(), (targets).cuda(), (mask).cuda(), (laplacian).cuda(), (Di).cuda(), (DiA).cuda(), faces
         else:
-            return Variable(inputs).cuda(), Variable(targets).cuda(), Variable(mask).cuda(), Variable(laplacian).cuda(), None, None, faces
+            return (inputs).cuda(), (targets).cuda(), (mask).cuda(), (laplacian).cuda(), None, None, faces
     else:
-        return Variable(inputs), Variable(targets), Variable(mask), Variable(laplacian), Variable(Di), Variable(DiA), faces
+        return (inputs), (targets), (mask), (laplacian), (Di), (DiA), faces
 
 sample_batch.num_vertices = 0
 sample_batch.num_faces = 0
@@ -209,7 +209,7 @@ def main():
             loss.backward()
             early_optimizer.step()
 
-            loss_value += loss.data[0]
+            loss_value += loss.item()
 
         print("Train epoch {}, loss {}".format(
             epoch, loss_value / args.num_updates))
@@ -235,7 +235,7 @@ def main():
             loss = F.smooth_l1_loss(outputs, targets, size_average=False) / args.batch_size
             loss.backward() # because of a problem with caching
 
-            loss_value += loss.data[0]
+            loss_value += loss.item()
 
         print("Test epoch {}, loss {}".format(epoch, loss_value / test_trials))
 
