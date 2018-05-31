@@ -40,6 +40,22 @@ def sparse_cat(tensors, size0, size1):
     size = torch.Size((len(tensors), size0, size1))
     return torch.sparse.FloatTensor(indices, values, size).coalesce()
 
+def sparse_diag_cat(tensors, size0, size1):
+    assert size0 == size1
+    N = size0
+    values = []
+    for i, tensor in enumerate(tensors):
+        values.append(tensor._values())
+    indices = []
+    index = 0
+     # assuming COO
+    for i, t in enumerate(tensors):
+        indices.append(t._indices()+i*N)
+    values = torch.cat(values, 0)
+    indices = torch.cat(indices, 1)
+    size = torch.Size((len(tensors)*size0, len(tensors)*size1))
+    return torch.sparse.FloatTensor(indices, values, size).coalesce()
+        
     
 def sp_sparse_to_pt_sparse(L):
     """
@@ -122,13 +138,16 @@ class LapResNet2(nn.Module):
         x = inputs
         x = F.elu(x)
         
-        xs = [x, SparseBMMFunc()(L, x)]
+        batch, node, dim = x.size()
+        Lx = torch.mm(L, x.view(-1, dim)).view(batch, node, dim)
+        xs = [x, Lx]
 
         x = torch.cat(xs, 2)
         x = self.bn_fc0(x)
 
         x = F.elu(x)
-        xs = [x, SparseBMMFunc()(L, x)]
+        Lx = torch.mm(L, x.view(-1, dim)).view(batch, node, dim)
+        xs = [x, Lx]
         x = torch.cat(xs, 2)
         x = self.bn_fc1(x)
 
