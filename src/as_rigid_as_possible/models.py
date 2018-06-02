@@ -20,14 +20,18 @@ import torch.nn.functional as F
 
 class Model(nn.Module):
 
-    def __init__(self):
+    def __init__(self,layer, dense=False):
         super(Model, self).__init__()
 
         self.conv1 = utils.GraphConv1x1(6, 128, batch_norm=None)
 
-        for i in range(15):
+        self.layer = layer
+        for i in range(self.layer):
             if i % 2 == 0:
-                module = utils.LapResNet2(128)
+                if dense:
+                    module = utils.DenseLapResNet2(128)
+                else:
+                    module = utils.LapResNet2(128)
             else:
                 module = utils.AvgResNet2(128)
             self.add_module("rn{}".format(i), module)
@@ -39,7 +43,7 @@ class Model(nn.Module):
         _, num_nodes, _ = inputs.size()
         x = self.conv1(inputs)
 
-        for i in range(15):
+        for i in range(self.layer):
             x = self._modules['rn{}'.format(i)](L, mask, x)
 
         x = F.elu(x)

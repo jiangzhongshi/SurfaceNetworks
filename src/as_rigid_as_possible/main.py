@@ -11,19 +11,18 @@ obtain one at http://mozilla.org/MPL/2.0/.
 from __future__ import absolute_import
 
 import torch
-from plyfile import PlyData, PlyElement
-from os import listdir
-from os.path import isdir, isfile, join
 import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.append(os.path.expanduser('~/Workspace/libigl/python'))
+import pyigl as igl
+from iglhelpers import e2p, p2e
 import utils.graph as graph
 import utils.mesh as mesh
 import utils.utils_pt as utils
 import numpy as np
 import scipy as sp
 import argparse
-from torch.autograd import Variable
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
@@ -32,6 +31,8 @@ from models import *
 import pickle
 import time
 import gc
+import tqdm
+import glob
 
 # Training settings
 parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
@@ -49,41 +50,57 @@ parser.add_argument('--no-cuda', action='store_true', default=False,
                     help='enables CUDA training')
 parser.add_argument('--model', default="lap",
                     help='lap | dirac | avg | mlp')
+parser.add_argument('--dense', action='store_true', default=False)
+parser.add_argument('--adj', action='store_true', default=False)
+parser.add_argument('--id', default='test',
+                    help='result identifier')
+parser.add_argument('--layer', type=int, default=15)
+
 args = parser.parse_args()
 args.cuda = not args.no_cuda and torch.cuda.is_available()
 
+def adjacency(FF):
+    A = igl.eigen.SparseMatrixi()
+    igl.adjacency_matrix(p2e(FF), A)
+    return e2p(A)
+
+def load_file(seqname):
+    sequence = np.load(seqname, encoding='latin1')
+    new_sequence = []
+    for i, frame in enumerate(sequence):
+        frame['V'] = torch.from_numpy(frame['V'])
+        if args.adj:
+            frame['L'] = adjacency(frame['F'])
+        frame['F'] = torch.from_numpy(frame['F'])
+        if i < 10:
+            #frame['L'] = utils.sp_sparse_to_pt_sparse(frame['L'])
+            if args.model == 'lap':
+                frame['L'] = torch.from_numpy(frame['L'].todense())
+
+
+            if args.model == "dir":
+                if args.dense:
+                    frame['Di'] = torch.from_numpy(frame['Di'].todense())
+                    frame['DiA'] = torch.from_numpy(frame['DiA'].todense())
+                else:
+                    frame['Di'] = utils.sp_sparse_to_pt_sparse(frame['Di'])
+                    frame['DiA'] = utils.sp_sparse_to_pt_sparse(frame['DiA'])
+            else:
+                frame['Di'] = None
+                frame['DiA'] = None
+        new_sequence.append(frame)
+
+    return new_sequence
 
 def read_data():
     mypath = "as_rigid_as_possible/data_plus"
-    files = sorted([f for f in listdir(mypath) if (isfile(join(mypath, f)) and f.endswith("npy"))])
+    files = sorted(glob.glob(mypath+'/*.npy'))
 
     print("Loading the dataset")
-    pbar = pb.ProgressBar()
 
     sequences = []
-
-    def load_file(seqname):
-        sequence = np.load(open(mypath + "/" + seqname, 'rb'), encoding='latin1')
-        new_sequence = []
-        for i, frame in enumerate(sequence):
-            frame['V'] = torch.from_numpy(frame['V'])
-            frame['F'] = torch.from_numpy(frame['F'])
-            if i < 10:
-                frame['L'] = utils.sp_sparse_to_pt_sparse(frame['L'])
-
-                if args.model == "dir":
-                    frame['Di'] = utils.sp_sparse_to_pt_sparse(frame['Di'])
-                    frame['DiA'] = utils.sp_sparse_to_pt_sparse(frame['DiA'])
-                else:
-                    frame['Di'] = None
-                    frame['DiA'] = None
-            new_sequence.append(frame)
-
-        return new_sequence
-
-    for seqname in pbar(files):
+    for seqname in tqdm.tqdm(files):
         sequences.append(load_file(seqname))
-
         if len(sequences) % 100 == 0:
             gc.collect()
 
@@ -96,7 +113,10 @@ test_ind = 0
 def sample_batch(sequences, is_training, is_fixed=False):
     global test_ind
     indices = []
+    sample_batch.num_vertices = 0
+    sample_batch.num_faces = 0
     offsets = []
+    dense_L = args.dense
 
     input_frames = 2
     output_frames = 40
@@ -123,10 +143,16 @@ def sample_batch(sequences, is_training, is_fixed=False):
     targets = torch.zeros(args.batch_size, sample_batch.num_vertices, 3 * output_frames)
     mask = torch.zeros(args.batch_size, sample_batch.num_vertices, 1)
     faces = torch.zeros(args.batch_size, sample_batch.num_faces, 3).long()
-    laplacian = []
-
-    Di = []
-    DiA = []
+    if args.dense:
+        if args.model == 'dir':
+            Di = torch.zeros(args.batch_size, 4* sample_batch.num_faces,4* sample_batch.num_vertices)
+            DiA = torch.zeros(args.batch_size, 4*sample_batch.num_vertices, 4*sample_batch.num_faces)
+        else:
+            laplacian = torch.zeros(args.batch_size, sample_batch.num_vertices, sample_batch.num_vertices)
+    else:
+        laplacian = []
+        Di = []
+        DiA = []
 
     for b, (ind, offset) in enumerate(zip(indices, offsets)):
         #offset = 0
@@ -141,33 +167,40 @@ def sample_batch(sequences, is_training, is_fixed=False):
 
         mask[b, :num_vertices] = 1
         faces[b, :num_faces] = sequences[ind][0]['F']
+        if args.model == "dir":
+            if args.dense:
+                Di[b, :(4*num_faces), :(4*num_vertices)] =sequences[ind][offset + input_frames - 1]['Di']
+                DiA[b, :(4*num_vertices), :(4*num_faces)] =sequences[ind][offset + input_frames - 1]['DiA']
+            else:
+                Di.append(sequences[ind][offset + input_frames - 1]['Di'])
+                DiA.append(sequences[ind][offset + input_frames - 1]['DiA'])
+        else:
+            L = sequences[ind][offset + input_frames - 1]['L']
+            if args.dense:
+                laplacian[b, :num_vertices, :num_vertices] = L
+            else:
+                laplacian.append(L)
 
-        L = sequences[ind][offset + input_frames - 1]['L']
-        laplacian.append(L)
+
+
+    if not args.dense:
+        laplacian = utils.sparse_diag_cat(laplacian, sample_batch.num_vertices, sample_batch.num_vertices)
 
         if args.model == "dir":
-            Di.append(sequences[ind][offset + input_frames - 1]['Di'])
-            DiA.append(sequences[ind][offset + input_frames - 1]['DiA'])
-
-    laplacian = utils.sparse_diag_cat(laplacian, sample_batch.num_vertices, sample_batch.num_vertices)
-
-    if args.model == "dir":
-        Di = utils.sparse_cat(Di, 4 * sample_batch.num_faces, 4 * sample_batch.num_vertices)
-        DiA = utils.sparse_cat(DiA, 4 * sample_batch.num_vertices, 4 * sample_batch.num_faces)
+            Di = utils.sparse_cat(Di, 4 * sample_batch.num_faces, 4 * sample_batch.num_vertices)
+            DiA = utils.sparse_cat(DiA, 4 * sample_batch.num_vertices, 4 * sample_batch.num_faces)
 
     if args.cuda:
         if args.model == "dir":
-            return (inputs).cuda(), (targets).cuda(), (mask).cuda(), (laplacian).cuda(), (Di).cuda(), (DiA).cuda(), faces
+            return (inputs).cuda(), (targets).cuda(), (mask).cuda(), None, (Di).cuda(), (DiA).cuda(), faces
         else:
             return (inputs).cuda(), (targets).cuda(), (mask).cuda(), (laplacian).cuda(), None, None, faces
     else:
         return (inputs), (targets), (mask), (laplacian), (Di), (DiA), faces
 
-sample_batch.num_vertices = 0
-sample_batch.num_faces = 0
 
 if args.model == "lap":
-    model = Model()
+    model = Model(args.layer, args.dense)
 elif args.model == "avg":
     model = AvgModel()
 elif args.model == "mlp":
@@ -190,11 +223,10 @@ def main():
     for epoch in range(args.num_epoch):
         #torch.save(model, 'models/{}_conv.pt'.format(args.model))
 
-        pbar = pb.ProgressBar()
         model.train()
         loss_value = 0
         # Train
-        for j in pbar(range(args.num_updates)):
+        for j in tqdm.tqdm(range(args.num_updates)):
             inputs, targets, mask, laplacian, Di, DiA, faces = sample_batch(sequences, True)
 
             if args.model in ["lap", "avg", "mlp"]:
@@ -219,49 +251,33 @@ def main():
                 param_group['lr'] *= 0.5
 
         loss_value = 0
-        pbar = pb.ProgressBar()
 
         # Evaluate
-        test_trials = len(sequences) // 5 // args.batch_size
-        for j in pbar(range(test_trials)):
-            inputs, targets, mask, laplacian, Di, DiA, faces = sample_batch(sequences, False)
+        with torch.no_grad():
+            test_trials = len(sequences) // 5 // args.batch_size
+            for j in tqdm.tqdm(range(test_trials)):
+                inputs, targets, mask, laplacian, Di, DiA, faces = sample_batch(sequences, False)
+
+                if args.model in ["lap", "avg", "mlp"]:
+                    outputs = model(laplacian, mask, inputs)
+                else:
+                    outputs = model(Di, DiA, mask, inputs)
+
+                outputs = outputs * mask.expand_as(outputs)
+                loss = F.smooth_l1_loss(outputs, targets, size_average=False) / args.batch_size
+                loss_value += loss.item()
+
+            print("Test epoch {}, loss {}".format(epoch, loss_value / test_trials))
+
+            inputs, targets, mask, laplacian, Di, DiA, faces = sample_batch(sequences, False, is_fixed=True)
 
             if args.model in ["lap", "avg", "mlp"]:
                 outputs = model(laplacian, mask, inputs)
             else:
                 outputs = model(Di, DiA, mask, inputs)
-
             outputs = outputs * mask.expand_as(outputs)
-            loss = F.smooth_l1_loss(outputs, targets, size_average=False) / args.batch_size
-            loss.backward() # because of a problem with caching
 
-            loss_value += loss.item()
-
-        print("Test epoch {}, loss {}".format(epoch, loss_value / test_trials))
-
-        inputs, targets, mask, laplacian, Di, DiA, faces = sample_batch(sequences, False, is_fixed=True)
-
-        if args.model in ["lap", "avg", "mlp"]:
-            outputs = model(laplacian, mask, inputs)
-        else:
-            outputs = model(Di, DiA, mask, inputs)
-        outputs = outputs * mask.expand_as(outputs)
-
-        results_path = 'as_rigid_as_possible/results_{}'.format(args.model)
-        if not os.path.exists(results_path):
-            os.mkdir(results_path)
-
-        for k in range(args.batch_size):
-            for t in range(inputs.size(2) // 3):
-                mesh.save_as_obj(
-                    results_path + '/samples_epoch_%03d_%03d_0curr.obj' % (k, t), inputs.data[k,:, 3*t:3*(t+1)].cpu(), faces[k].cpu())
-
-            for t in range(targets.size(2) // 3):
-                mesh.save_as_obj(
-                    results_path + '/samples_epoch_%03d_%03d_2targ.obj' % (k, t), targets.data[k,:, 3*t:3*(t+1)].cpu(), faces[k].cpu())
-
-                mesh.save_as_obj(
-                    results_path + '/samples_epoch_%03d_%03d_1pred.obj' % (k, t), outputs.data[k,:, 3*t:3*(t+1)].cpu(), faces[k].cpu())
-
+        if epoch % 10 == 9:
+            torch.save(model.state_dict(), f'pts/{args.id}_{args.layer}_{args.model}.pts')
 if __name__ == "__main__":
     main()

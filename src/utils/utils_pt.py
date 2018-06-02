@@ -125,6 +125,33 @@ def global_average(x, mask):
     mask = mask.expand_as(x)
     return (x * mask).sum(1, keepdim=True) / mask.sum(1, keepdim=True)
 
+class DenseLapResNet2(nn.Module):
+    def __init__(self, num_outputs):
+        super().__init__()
+        self.num_outputs = num_outputs
+
+        self.bn_fc0 = GraphConv1x1(2 * num_outputs, num_outputs, batch_norm="pre")
+        self.bn_fc1 = GraphConv1x1(2 * num_outputs, num_outputs, batch_norm="pre")
+
+    def forward(self, L, mask, inputs):
+        x = inputs
+        x = F.elu(x)
+
+        Lx = torch.bmm(L, x)
+        xs = [x, Lx]
+
+        x = torch.cat(xs, 2)
+        x = self.bn_fc0(x)
+
+        x = F.elu(x)
+        Lx = torch.bmm(L, x)
+        xs = [x, Lx]
+        x = torch.cat(xs, 2)
+        x = self.bn_fc1(x)
+
+        return x + inputs
+
+
 class LapResNet2(nn.Module):
     def __init__(self, num_outputs):
         super(LapResNet2, self).__init__()
@@ -138,14 +165,16 @@ class LapResNet2(nn.Module):
         x = F.elu(x)
 
         batch, node, dim = x.size()
-        Lx = torch.mm(L, x.view(-1, dim)).view(batch, node, dim)
+        #Lx = torch.mm(L, x.view(-1, dim)).view(batch, node, dim)
+        Lx = torch.bmm(L, x)
         xs = [x, Lx]
 
         x = torch.cat(xs, 2)
         x = self.bn_fc0(x)
 
         x = F.elu(x)
-        Lx = torch.mm(L, x.view(-1, dim)).view(batch, node, dim)
+        #Lx = torch.mm(L, x.view(-1, dim)).view(batch, node, dim)
+        Lx = torch.bmm(L, x)
         xs = [x, Lx]
         x = torch.cat(xs, 2)
         x = self.bn_fc1(x)
@@ -168,7 +197,7 @@ class DirResNet2(nn.Module):
         x_in, f_in = F.elu(v), F.elu(f)
         x = x_in
         x = x.view(batch_size, num_nodes * 4, num_inputs // 4)
-        x = SparseBMMFunc()(Di, x)
+        x = torch.bmm(Di, x)
         x = x.view(batch_size, num_faces, num_inputs)
         x = torch.cat([f_in, x], 2)
         x = self.bn_fc0(x)
@@ -176,7 +205,8 @@ class DirResNet2(nn.Module):
 
         x = F.elu(x)
         x = x.view(batch_size, num_faces * 4, num_inputs // 4)
-        x = SparseBMMFunc()(DiA, x)
+        #x = SparseBMMFunc()(DiA, x)
+        x = torch.bmm(DiA, x)
         x = x.view(batch_size, num_nodes, num_inputs)
         x = torch.cat([x_in, x], 2)
         x = self.bn_fc1(x)
