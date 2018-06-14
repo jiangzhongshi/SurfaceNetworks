@@ -52,6 +52,7 @@ parser.add_argument('--model', default="lap",
                     help='lap | dirac | avg | mlp')
 parser.add_argument('--dense', action='store_true', default=False)
 parser.add_argument('--adj', action='store_true', default=False)
+parser.add_argument('--first100', action='store_true', default=False)
 parser.add_argument('--id', default='test',
                     help='result identifier')
 parser.add_argument('--layer', type=int, default=15)
@@ -74,15 +75,8 @@ def load_file(seqname):
         frame['F'] = torch.from_numpy(frame['F'])
         if i < 10:
             #frame['L'] = utils.sp_sparse_to_pt_sparse(frame['L'])
-            if args.model == 'lap':
-                frame['L'] = torch.from_numpy(frame['L'].todense())
-
-
             if args.model == "dir":
-                if args.dense:
-                    frame['Di'] = torch.from_numpy(frame['Di'].todense())
-                    frame['DiA'] = torch.from_numpy(frame['DiA'].todense())
-                else:
+                if not args.dense:
                     frame['Di'] = utils.sp_sparse_to_pt_sparse(frame['Di'])
                     frame['DiA'] = utils.sp_sparse_to_pt_sparse(frame['DiA'])
             else:
@@ -95,6 +89,8 @@ def load_file(seqname):
 def read_data():
     mypath = "as_rigid_as_possible/data_plus"
     files = sorted(glob.glob(mypath+'/*.npy'))
+    if args.first100:
+        files = files[:100]
 
     print("Loading the dataset")
 
@@ -168,27 +164,29 @@ def sample_batch(sequences, is_training, is_fixed=False):
         mask[b, :num_vertices] = 1
         faces[b, :num_faces] = sequences[ind][0]['F']
         if args.model == "dir":
+            di, dia = sequences[ind][offset + input_frames - 1]['Di'],sequences[ind][offset + input_frames - 1]['DiA']
             if args.dense:
-                Di[b, :(4*num_faces), :(4*num_vertices)] =sequences[ind][offset + input_frames - 1]['Di']
-                DiA[b, :(4*num_vertices), :(4*num_faces)] =sequences[ind][offset + input_frames - 1]['DiA']
+                Di[b, :(4*num_faces), :(4*num_vertices)] = torch.from_numpy(di.todense())
+                DiA[b, :(4*num_vertices), :(4*num_faces)] =torch.from_numpy(dia.todense())
             else:
                 Di.append(sequences[ind][offset + input_frames - 1]['Di'])
                 DiA.append(sequences[ind][offset + input_frames - 1]['DiA'])
         else:
             L = sequences[ind][offset + input_frames - 1]['L']
             if args.dense:
-                laplacian[b, :num_vertices, :num_vertices] = L
+                laplacian[b, :num_vertices, :num_vertices] = torch.from_numpy(L.todense())
             else:
                 laplacian.append(L)
 
 
 
     if not args.dense:
-        laplacian = utils.sparse_diag_cat(laplacian, sample_batch.num_vertices, sample_batch.num_vertices)
 
         if args.model == "dir":
-            Di = utils.sparse_cat(Di, 4 * sample_batch.num_faces, 4 * sample_batch.num_vertices)
-            DiA = utils.sparse_cat(DiA, 4 * sample_batch.num_vertices, 4 * sample_batch.num_faces)
+            Di = utils.sparse_diag_cat(Di, 4 * sample_batch.num_faces, 4 * sample_batch.num_vertices)
+            DiA = utils.sparse_diag_cat(DiA, 4 * sample_batch.num_vertices, 4 * sample_batch.num_faces)
+        else:
+            laplacian = utils.sparse_diag_cat(laplacian, sample_batch.num_vertices, sample_batch.num_vertices)
 
     if args.cuda:
         if args.model == "dir":

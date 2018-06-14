@@ -130,7 +130,10 @@ class DirModel(nn.Module):
 
         v = self.conv1(inputs)
 
-        num_faces = DiA.size(2) // 4
+        if len(Di.size())==3:
+            num_faces = DiA.size(2) // 4
+        else:
+            num_faces = DiA.size(1)//4//batch_size
 
         f = (torch.zeros(batch_size, num_faces, 128))
         if v.is_cuda:

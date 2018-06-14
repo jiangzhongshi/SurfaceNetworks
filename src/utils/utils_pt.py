@@ -40,8 +40,6 @@ def sparse_cat(tensors, size0, size1):
     return torch.sparse.FloatTensor(indices, values, size).coalesce()
 
 def sparse_diag_cat(tensors, size0, size1):
-    assert size0 == size1
-    N = size0
     values = []
     for i, tensor in enumerate(tensors):
         values.append(tensor._values())
@@ -49,7 +47,7 @@ def sparse_diag_cat(tensors, size0, size1):
     index = 0
      # assuming COO
     for i, t in enumerate(tensors):
-        indices.append(t._indices()+i*N)
+        indices.append(t._indices()+i*torch.LongTensor([[size0], [size1]]))
     values = torch.cat(values, 0)
     indices = torch.cat(indices, 1)
     size = torch.Size((len(tensors)*size0, len(tensors)*size1))
@@ -196,17 +194,24 @@ class DirResNet2(nn.Module):
 
         x_in, f_in = F.elu(v), F.elu(f)
         x = x_in
-        x = x.view(batch_size, num_nodes * 4, num_inputs // 4)
-        x = torch.bmm(Di, x)
+        if len(Di.size())==3:
+            x = x.view(batch_size, num_nodes * 4, num_inputs // 4)
+            x = SparseBMMFunc()(Di, x)
+        else:
+            x = x.view(batch_size* num_nodes * 4, num_inputs // 4)
+            x = torch.mm(Di, x)
         x = x.view(batch_size, num_faces, num_inputs)
         x = torch.cat([f_in, x], 2)
         x = self.bn_fc0(x)
         f_out = x
 
         x = F.elu(x)
-        x = x.view(batch_size, num_faces * 4, num_inputs // 4)
-        #x = SparseBMMFunc()(DiA, x)
-        x = torch.bmm(DiA, x)
+        if len(Di.size())==3:
+            x = x.view(batch_size, num_faces * 4, num_inputs // 4)
+            x = SparseBMMFunc()(DiA, x)
+        else:
+            x = x.view(batch_size* num_faces * 4, num_inputs // 4)
+            x = torch.mm(DiA, x)
         x = x.view(batch_size, num_nodes, num_inputs)
         x = torch.cat([x_in, x], 2)
         x = self.bn_fc1(x)
