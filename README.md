@@ -57,7 +57,11 @@ git+https://github.com/jiangzhongshi/libigl@cluster-pyigl#egg=pyigl
 
 ## Data
 * Spatio Tempro Prediction https://drive.google.com/file/d/1tpqN7vrbuwwDsJEuBbLFoY3o3Zwe2K8i/view?usp=sharing
-* 
+* Mesh MNIST https://drive.google.com/file/d/1TPuVgQK-vPqLnetgHnHpfPyAYGKuUzRv/view?usp=sharing
+
+## Note
+* The code was developed in Python 2.7 and PyTorch 0.x.x, and is being migrated to Python 3.x and PyTorch 0.4.0.
+* Data was prepared with Python 2.7, so you may need 'latin1' flag when loading.
 
 ## License
 Source code [MPL2](http://www.mozilla.org/MPL/2.0/) licensed
