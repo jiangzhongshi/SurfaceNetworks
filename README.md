@@ -51,7 +51,7 @@ plyfile==0.5
 progressbar2==3.36.0
 scikit_learn==0.19.1
 git+https://github.com/jiangzhongshi/pynvrtc@master#egg=pynvrtc
-git+https://github.com/jiangzhongshi/libigl@cluster-pyigl#egg=pyigl
+git+https://github.com/jiangzhongshi/libigl@cluster-pyigl#egg=pyigl #optional
  ```
 [Python bindings for libigl](https://github.com/libigl/libigl/tree/master/python) is used for geometry processing, computing Laplacian, Dirac etc. If you are reproducing the experiments only, this is not necessary.
 
