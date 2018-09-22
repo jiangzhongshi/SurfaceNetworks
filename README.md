@@ -62,6 +62,7 @@ git+https://github.com/jiangzhongshi/libigl@cluster-pyigl#egg=pyigl #optional
 ## Note
 * The code was developed in Python 2.7 and PyTorch 0.x.x, and is being migrated to Python 3.x and PyTorch 0.4.0.
 * Data was prepared with Python 2.7, so you may need 'latin1' flag when loading.
+* A *slightly* optimized version is work in progress, please contact Zhongshi Jiang if you need it, or wait :)
 
 ## License
 Source code [MPL2](http://www.mozilla.org/MPL/2.0/) licensed
