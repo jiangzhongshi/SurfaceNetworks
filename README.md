@@ -35,7 +35,7 @@ We prove that these models define shape representations that are stable to defor
  given by SNs.
 
  ## Full Text
- To appear in the proceedings of CVPR 2018, the preprint pdf is [here](https://cs.nyu.edu/~zhongshi/files/SurfaceNetworks.pdf)
+ To appear in the proceedings of CVPR 2018, the preprint pdf is on [ArXiv](https://arxiv.org/pdf/1705.10819.pdf)
  
  ## Source Code
  Source code is hosted on this GitHub repository. Instructions can be read from the argparse options. 
