@@ -10,7 +10,6 @@ obtain one at http://mozilla.org/MPL/2.0/.
 
 import os, sys
 sys.path.append(os.path.dirname(__file__))
-from cuda.sparse_bmm_func import SparseBMMFunc
 
 import scipy as sp
 import numpy as np

@@ -48,7 +48,7 @@ cupy==2.2.0
 numpy==1.14.2
 matplotlib==2.2.2
 plyfile==0.5
-progressbar2==3.36.0
+tqdm
 scikit_learn==0.19.1
 git+https://github.com/jiangzhongshi/pynvrtc@master#egg=pynvrtc
 git+https://github.com/jiangzhongshi/libigl@cluster-pyigl#egg=pyigl

@@ -26,7 +26,7 @@ import argparse
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-import progressbar as pb
+import tqdm
 from models import *
 import pickle
 import time
@@ -176,12 +176,11 @@ def sample_batch(sequences, is_training, is_fixed=False):
             if args.dense:
                 laplacian[b, :num_vertices, :num_vertices] = torch.from_numpy(L.todense())
             else:
-                laplacian.append(L)
+                laplacian.append(utils.sp_sparse_to_pt_sparse(L))
 
 
 
     if not args.dense:
-
         if args.model == "dir":
             Di = utils.sparse_diag_cat(Di, 4 * sample_batch.num_faces, 4 * sample_batch.num_vertices)
             DiA = utils.sparse_diag_cat(DiA, 4 * sample_batch.num_vertices, 4 * sample_batch.num_faces)

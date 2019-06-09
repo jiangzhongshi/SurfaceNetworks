@@ -25,7 +25,7 @@ from torch.autograd import Variable
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-import progressbar as pb
+import tqdm
 import os
 import pickle
 import time
@@ -62,12 +62,10 @@ def convert(sample):
             sample["flat_DiA"] = None
 
 print("Preprocess Dataset")
-pbar = pb.ProgressBar()
-for i in pbar(range(len(train_data))):
+for i in tqdm.tqdm(range(len(train_data))):
     convert(train_data[i])
 
-pbar = pb.ProgressBar()
-for i in pbar(range(len(test_data))):
+for i in tqdm.tqdm(range(len(test_data))):
     convert(test_data[i])
 
 def sample_batch(samples):
@@ -171,14 +169,14 @@ def main():
     for epoch in range(args.num_epoch):
         #torch.save(model, 'models/{}_conv.pt'.format(args.model))
 
-        pbar = pb.ProgressBar()
+        
         model.train()
         loss_value = 0.0
         loss_bce = 0.0
         loss_kld = 0.0
 
         # Train
-        for j in pbar(range(len(train_data) // args.batch_size)):
+        for j in tqdm.tqdm(range(len(train_data) // args.batch_size)):
             inputs, flat_inputs, mask, laplacian, flat_laplacian, Di, DiA, flat_Di, flat_DiA, faces = sample_batch(train_data)
 
             if args.model == "lap":
@@ -216,10 +214,10 @@ def main():
         loss_value = 0.0
         loss_bce = 0.0
         loss_kld = 0.0
-        pbar = pb.ProgressBar()
+        
 
         # Evaluate
-        for j in pbar(range(len(test_data) // args.batch_size)):
+        for j in tqdm.tqdm(range(len(test_data) // args.batch_size)):
             inputs, flat_inputs, mask, laplacian, flat_laplacian, Di, DiA, flat_Di, flat_DiA, faces = sample_batch(test_data)
 
             if args.model == "lap":

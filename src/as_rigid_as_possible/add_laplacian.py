@@ -25,7 +25,7 @@ from torch.autograd import Variable
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-import progressbar as pb
+import tqdm
 import os
 from models import *
 from multiprocessing.pool import Pool

@@ -25,7 +25,7 @@ from torch.autograd import Variable
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-import progressbar as pb
+import tqdm
 import os
 import pickle
 import time
@@ -62,12 +62,12 @@ def convert(sample):
 
 
 print("Preprocess Dataset")
-pbar = pb.ProgressBar()
-for i in pbar(range(len(train_data))):
+
+for i in tqdm.tqdm(range(len(train_data))):
     convert(train_data[i])
 
-pbar = pb.ProgressBar()
-for i in pbar(range(len(test_data))):
+
+for i in tqdm.tqdm(range(len(test_data))):
     convert(test_data[i])
 
 inputs = torch.zeros(1, 1, 3)
@@ -140,13 +140,13 @@ early_optimizer = optim.Adam(model.parameters(), 1e-3, weight_decay=1e-5)
 def main():
     for epoch in range(args.num_epoch):
 
-        pbar = pb.ProgressBar()
+        
         model.train()
         loss_value = 0.0
         correct = 0.0
 
         # Train
-        for j in pbar(range(len(train_data) // args.batch_size)):
+        for j in tqdm.tqdm(range(len(train_data) // args.batch_size)):
             inputs, targets, mask, laplacian, Di, DiA = sample_batch(train_data, is_training=True)
 
             if args.model in ["lap", "avg", "mlp"]:
@@ -182,10 +182,10 @@ def main():
 
         loss_value = 0.0
         correct = 0.0
-        pbar = pb.ProgressBar()
+        
 
         # Evaluate
-        for j in pbar(range(len(test_data) // args.batch_size)):
+        for j in tqdm.tqdm(range(len(test_data) // args.batch_size)):
             inputs, targets, mask, laplacian, Di, DiA = sample_batch(test_data, is_training=False)
 
             if args.model in ["lap", "avg", "mlp"]:
