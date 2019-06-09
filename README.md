@@ -42,18 +42,15 @@ We prove that these models define shape representations that are stable to defor
 
  ## Requirements
  ```
-torch==0.3.1.post2
+torch==0.4.0
 scipy==1.0.0
-cupy==2.2.0
 numpy==1.14.2
 matplotlib==2.2.2
 plyfile==0.5
-tqdm
+tqdm==4.26
 scikit_learn==0.19.1
-git+https://github.com/jiangzhongshi/pynvrtc@master#egg=pynvrtc
-git+https://github.com/jiangzhongshi/libigl@cluster-pyigl#egg=pyigl
  ```
-[Python bindings for libigl](https://github.com/libigl/libigl/tree/master/python) is used for geometry processing
+(optional)[Python bindings for libigl](https://github.com/libigl/libigl/tree/master/python) is used for geometry processing. It's not required for reproducing the experiment, but if you would like to recompute Laplacian, Dirac etc, it would be convenient to install through `pip install git+https://github.com/jiangzhongshi/libigl@cluster-pyigl#egg=pyigl`
 
 ## License
 Source code [MPL2](http://www.mozilla.org/MPL/2.0/) licensed

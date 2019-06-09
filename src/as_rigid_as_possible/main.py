@@ -35,21 +35,17 @@ import tqdm
 import glob
 
 # Training settings
-parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
+parser = argparse.ArgumentParser(description='As Rigid As Possible')
 parser.add_argument('--batch-size', type=int, default=32, metavar='N',
                     help='input batch size for training (default: 32)')
 parser.add_argument('--num-epoch', type=int, default=110, metavar='N',
                     help='num of training epochs (default: 100)')
 parser.add_argument('--num-updates', type=int, default=1000, metavar='N',
                     help='num of training epochs (default: 100)')
-parser.add_argument('--number-edges', type=int, default=8, metavar='N',
-                    help='minimum number of edges per vertex (default: 8)')
-parser.add_argument('--coarsening-levels', type=int, default=4, metavar='N',
-                    help='number of coarsened graphs. (default: 4)')
 parser.add_argument('--no-cuda', action='store_true', default=False,
                     help='enables CUDA training')
 parser.add_argument('--model', default="lap",
-                    help='lap | dirac | avg | mlp')
+                    help='lap | dir | avg | mlp')
 parser.add_argument('--dense', action='store_true', default=False)
 parser.add_argument('--adj', action='store_true', default=False)
 parser.add_argument('--first100', action='store_true', default=False)

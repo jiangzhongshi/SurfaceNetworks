@@ -161,18 +161,20 @@ class LapResNet2(nn.Module):
         x = inputs
         x = F.elu(x)
 
-        batch, node, dim = x.size()
-        #Lx = torch.mm(L, x.view(-1, dim)).view(batch, node, dim)
-        Lx = torch.bmm(L, x)
-        xs = [x, Lx]
-
+        batch, node, feat = x.size()
+        if (L.layout) is torch.strided: # dense
+            xs = [x, torch.bmm(L,x)]
+        else: # sparse
+            xs = [x, torch.mm(L,x.view(-1, feat)).view(batch, node, feat)]
         x = torch.cat(xs, 2)
+
         x = self.bn_fc0(x)
 
         x = F.elu(x)
-        #Lx = torch.mm(L, x.view(-1, dim)).view(batch, node, dim)
-        Lx = torch.bmm(L, x)
-        xs = [x, Lx]
+        if (L.layout) is torch.strided: # dense
+            xs = [x, torch.bmm(L,x)]
+        else: # sparse
+            xs = [x, torch.mm(L,x.view(-1, feat)).view(batch, node, feat)]
         x = torch.cat(xs, 2)
         x = self.bn_fc1(x)
 
