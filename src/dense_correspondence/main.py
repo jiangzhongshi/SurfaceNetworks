@@ -13,6 +13,7 @@ import os
 import datetime
 from os import listdir
 from os.path import isdir, isfile, join
+import tqdm
 import shutil
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
@@ -173,14 +174,14 @@ def sample_batch(sequences, is_training, args):
             Di.append(sequence_ind['Di'])
             DiA.append(sequence_ind['DiA'])
     if 'amp' in args.model:
-        laplacian = [utils.sparse_cat(lap, sample_batch.num_vertices, sample_batch.num_vertices).coalesce() for lap in map(list, zip(*laplacian))]
+        laplacian = [utils.sparse_diag_cat(lap, sample_batch.num_vertices, sample_batch.num_vertices).coalesce() for lap in map(list, zip(*laplacian))]
     elif 'lap' in args.model:
-        laplacian = utils.sparse_cat(laplacian, sample_batch.num_vertices, sample_batch.num_vertices).coalesce()
+        laplacian = utils.sparse_diag_cat(laplacian, sample_batch.num_vertices, sample_batch.num_vertices).coalesce()
 
     Operator = None
     if 'dir' in args.model:
-        Di = utils.sparse_cat(Di, 4 * sample_batch.num_faces, 4 * sample_batch.num_vertices).coalesce()
-        DiA = utils.sparse_cat(DiA, 4 * sample_batch.num_vertices, 4 * sample_batch.num_faces).coalesce()
+        Di = utils.sparse_diag_cat(Di, 4 * sample_batch.num_faces, 4 * sample_batch.num_vertices).coalesce()
+        DiA = utils.sparse_diag_cat(DiA, 4 * sample_batch.num_vertices, 4 * sample_batch.num_faces).coalesce()
         Operator = ((Di).cuda(), (DiA).cuda())
     elif 'amp' in args.model:
         Operator = [(lap).cuda() for lap in laplacian]
@@ -291,7 +292,7 @@ def main():
         loss_fun = loss_fun_delta_cross_entropy
 
     if not args.no_pre_load:
-        sequences = [read_data(n, args) for n in sequences]
+        sequences = [read_data(n, args) for n in tqdm.tqdm(sequences)]
     custom_logging("Data Read")
 
     for epoch in range(args.num_epoch):
@@ -324,8 +325,6 @@ def main():
             early_optimizer.step()
             loss_value += loss.item()
 
-            if np.any(np.isnan(outputs.data)):
-                assert False, (result_identifier, epoch, j)
 
         custom_logging("Train epoch {}, loss {}".format(
             epoch, loss_value / args.num_updates))
