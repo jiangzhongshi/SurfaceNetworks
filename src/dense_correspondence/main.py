@@ -247,7 +247,7 @@ def main():
 
     def custom_logging(stuff):
         print(f'{result_identifier}::{stuff}', file=sys.stderr) # also to err
-        logfile = f'log/{result_identifier}.log'
+        logfile = f'{result_identifier}.log'
         with open(logfile,'a') as fp:
             print(stuff, file=fp)
 

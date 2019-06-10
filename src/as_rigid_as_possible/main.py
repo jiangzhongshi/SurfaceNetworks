@@ -14,9 +14,6 @@ import torch
 import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-sys.path.append(os.path.expanduser('~/Workspace/libigl/python'))
-import pyigl as igl
-from iglhelpers import e2p, p2e
 import utils.graph as graph
 import utils.mesh as mesh
 import utils.utils_pt as utils
@@ -56,18 +53,11 @@ parser.add_argument('--layer', type=int, default=15)
 args = parser.parse_args()
 args.cuda = not args.no_cuda and torch.cuda.is_available()
 
-def adjacency(FF):
-    A = igl.eigen.SparseMatrixi()
-    igl.adjacency_matrix(p2e(FF), A)
-    return e2p(A)
-
 def load_file(seqname):
     sequence = np.load(seqname, encoding='latin1')
     new_sequence = []
     for i, frame in enumerate(sequence):
         frame['V'] = torch.from_numpy(frame['V'])
-        if args.adj:
-            frame['L'] = adjacency(frame['F'])
         frame['F'] = torch.from_numpy(frame['F'])
         if i < 10:
             #frame['L'] = utils.sp_sparse_to_pt_sparse(frame['L'])

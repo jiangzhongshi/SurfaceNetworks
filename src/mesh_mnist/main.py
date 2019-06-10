@@ -12,9 +12,11 @@ from __future__ import absolute_import
 
 import torch
 from plyfile import PlyData, PlyElement
+import os
 from os import listdir
 from os.path import isdir, isfile, join
 import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 import utils.graph as graph
 import utils.mesh as mesh
 import utils.utils_pt as utils
