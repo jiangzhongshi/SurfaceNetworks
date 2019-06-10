@@ -42,15 +42,21 @@ We prove that these models define shape representations that are stable to defor
 
  ## Requirements
  ```
-torch==0.4.0
+torch==1.0.0
 scipy==1.0.0
 numpy==1.14.2
 matplotlib==2.2.2
 plyfile==0.5
 tqdm==4.26
-scikit_learn==0.19.1
  ```
 (optional)[Python bindings for libigl](https://github.com/libigl/libigl/tree/master/python) is used for geometry processing. It's not required for reproducing the experiment, but if you would like to recompute Laplacian, Dirac etc, it would be convenient to install through `pip install git+https://github.com/jiangzhongshi/libigl@cluster-pyigl#egg=pyigl`
+
+## Data
+Spatio Tempro Prediction https://drive.google.com/file/d/1tpqN7vrbuwwDsJEuBbLFoY3o3Zwe2K8i/view?usp=sharing
+
+Mesh MNIST https://drive.google.com/file/d/1TPuVgQK-vPqLnetgHnHpfPyAYGKuUzRv/view?usp=sharing
+
+FAUST correspondence https://drive.google.com/file/d/1bLPL7eBt1IRPUiQYdDXpB_-uNOxj-9Uj/view?usp=sharing
 
 ## License
 Source code [MPL2](http://www.mozilla.org/MPL/2.0/) licensed
