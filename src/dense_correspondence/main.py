@@ -37,7 +37,7 @@ import subprocess
 parser = argparse.ArgumentParser(description='SurfaceNN dense correspondence example')
 
 parser.add_argument('--batch-size', type=int, default=1, metavar='N')
-parser.add_argument('--datapath', default="/dev/shm/FAUST_npz/train_FAUST_npz/", help='datapath')
+parser.add_argument('--datapath', default="train_FAUST_npz/", help='datapath')
 parser.add_argument('--deser-option', default='auto', choices= ['auto', 'no', 'force'], help='deser-option')
 parser.add_argument('--deser-path', default=None, help='deserialization path')
 
@@ -49,7 +49,7 @@ parser.add_argument('--no-cuda', action='store_true', default=False)
 parser.add_argument('--no-pre-load', action='store_true', default=False)
 parser.add_argument('--num-epoch', type=int, default=110, metavar='N')
 parser.add_argument('--num-updates', type=int, default=100, metavar='N')
-parser.add_argument('--result-prefix', default='serious')
+parser.add_argument('--result-prefix', default='test')
 
 parser.add_argument('--off-bn', action='store_true', default=False)
 parser.add_argument('--xz-rotate', action='store_true', default=False)

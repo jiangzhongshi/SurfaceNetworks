@@ -162,7 +162,7 @@ def main():
             loss.backward()
             early_optimizer.step()
 
-            loss_value += loss.data[0]
+            loss_value += loss.item()
             pred = outputs.data.max(1)[1] # get the index of the max log-probability
             correct += pred.eq(targets.data).cpu().sum()
         gc.collect()
@@ -199,7 +199,7 @@ def main():
 
             loss.backward()
 
-            loss_value += loss.data[0]
+            loss_value += loss.item()
             pred = outputs.data.max(1)[1] # get the index of the max log-probability
             correct += pred.eq(targets.data).cpu().sum()
             gc.collect()

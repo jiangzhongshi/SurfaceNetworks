@@ -46,11 +46,11 @@ args = parser.parse_args()
 args.cuda = not args.no_cuda and torch.cuda.is_available()
 
 print("Load data")
-train_data = np.load(open('mesh_mnist/data/train_plus.np', 'rb'))
-test_data = np.load(open('mesh_mnist/data/test_plus.np', 'rb'))
+train_data = np.load(open('mesh_mnist/data/train_plus.np', 'rb'),encoding='latin1')
+test_data = np.load(open('mesh_mnist/data/test_plus.np', 'rb'), encoding='latin1')
 
 def convert(sample):
-    for key in sample.keys():
+    for key in list(sample):
         class_name = str(type(sample[key]))
         if class_name.find('sparse') > 0:
             sample[key] = utils.sp_sparse_to_pt_sparse(sample[key])
@@ -111,8 +111,6 @@ def sample_batch(samples):
             flat_DiA.append(samples[ind]['flat_DiA'])
 
 
-    laplacian = utils.sparse_cat(laplacian, sample_batch.num_vertices, sample_batch.num_vertices)
-    flat_laplacian = utils.sparse_cat(flat_laplacian, sample_batch.num_vertices, sample_batch.num_vertices)
 
     if args.model == "dir":
         Di = utils.sparse_cat(Di, 4 * sample_batch.num_faces, 4 * sample_batch.num_vertices)
@@ -122,6 +120,8 @@ def sample_batch(samples):
         flat_DiA = utils.sparse_cat(flat_DiA, 4 * sample_batch.num_vertices, 4 * sample_batch.num_faces)
         return Variable(inputs).cuda(), Variable(flat_inputs).cuda(), Variable(mask).cuda(), Variable(laplacian).cuda(), Variable(flat_laplacian).cuda(), Variable(Di).cuda(), Variable(DiA).cuda(), Variable(flat_Di).cuda(), Variable(flat_DiA).cuda(), faces
     else:
+        laplacian = utils.sparse_diag_cat(laplacian, sample_batch.num_vertices, sample_batch.num_vertices)
+        flat_laplacian = utils.sparse_diag_cat(flat_laplacian, sample_batch.num_vertices, sample_batch.num_vertices)
         return Variable(inputs).cuda(), Variable(flat_inputs).cuda(), Variable(mask).cuda(), Variable(laplacian).cuda(), Variable(flat_laplacian).cuda(), None, None, None, None, faces
 
 sample_batch.num_vertices = 0
@@ -186,14 +186,14 @@ def main():
                 recon_mu, recon_logvar, z, mu, logvar = model(inputs, flat_inputs, Di, DiA, flat_Di, flat_DiA, mask)
 
             BCE, KLD = loss_function(recon_mu, recon_logvar, mask, inputs, z, mu, logvar)
-            loss_bce, loss_kld = loss_bce + BCE.data[0], loss_kld + KLD.data[0]
+            loss_bce, loss_kld = loss_bce + BCE.item(), loss_kld + KLD.item()
             loss = BCE + KLD * min(epoch/10.0, 1)
 
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
 
-            loss_value += loss.data[0]
+            loss_value += loss.item()
 
         folder_name = 'mesh_mnist/results_' + args.model
         if not os.path.exists(folder_name):
@@ -227,10 +227,10 @@ def main():
                 recon_mu, recon_logvar, z, mu, logvar = model(inputs, flat_inputs, Di, DiA, flat_Di, flat_DiA, mask)
 
             BCE, KLD = loss_function(recon_mu, recon_logvar, mask, inputs, z, mu, logvar)
-            loss_bce, loss_kld = loss_bce + BCE.data[0], loss_kld + KLD.data[0]
+            loss_bce, loss_kld = loss_bce + BCE.item(), loss_kld + KLD.item()
             loss = BCE + KLD
 
-            loss_value += loss.data[0]
+            loss_value += loss.item()
 
         for k in range(10):
             mesh.save_as_ply(
