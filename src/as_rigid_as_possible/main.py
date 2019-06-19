@@ -262,5 +262,6 @@ def main():
 
         if epoch % 10 == 9:
             torch.save(model.state_dict(), f'pts/{args.id}_{args.layer}_{args.model}.pts')
+        torch.save(model.state_dict(), f'pts/{args.id}_{args.layer}_{args.model}.pts')
 if __name__ == "__main__":
     main()
