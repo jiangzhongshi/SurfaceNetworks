@@ -7,3 +7,6 @@ src/as_rigid_as_possible/data_plus/
 src/dense_correspondence/train_FAUST_npz/
 src/mesh_mnist/data/
 *.log
+*.tar.gz
+*.tar
+*npz
