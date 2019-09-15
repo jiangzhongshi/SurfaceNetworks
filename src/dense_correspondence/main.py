@@ -84,7 +84,8 @@ def read_data(seqname, args):
                 frame['L'].append(utils.sp_sparse_to_pt_sparse(L).coalesce())
 
         elif 'lap' in args.model:
-            L = sequence['L'].item().astype('f').tocsr()
+            L = mesh.intrinsic_laplacian(frame['V'], frame['F'])
+            # L = sequence['L'].item().astype('f').tocsr()
             frame['L'] = utils.sp_sparse_to_pt_sparse(L).coalesce()
         else:
             frame['L'] = None

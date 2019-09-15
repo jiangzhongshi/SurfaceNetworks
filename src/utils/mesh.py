@@ -125,6 +125,14 @@ def laplacian(W, A_inv):
     return L
 
 
+def intrinsic_laplacian(V,F):
+    import sys, os
+    sys.path.insert(0, os.path.expanduser('~/Workspace/InterSurfaceMapping/python'))
+    import seism
+    L, _,_ = seism.intrinsic_delaunay_cotmatrix(V,F)
+    return L.tocsr().astype(np.float32)
+
+
 def ply_to_numpy(plydata):
     V = np.stack([plydata['vertex'].data['x'], plydata['vertex'].data['y'], plydata['vertex'].data['z']])
     V = V.transpose(1, 0)
