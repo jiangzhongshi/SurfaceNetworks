@@ -25,11 +25,13 @@ import torch.nn.functional as F
 import torch.optim as optim
 import tqdm
 from models import *
+from gcn import GCNModel
 import pickle
 import time
 import gc
 import tqdm
 import glob
+
 
 # Training settings
 parser = argparse.ArgumentParser(description='As Rigid As Possible')
@@ -42,7 +44,7 @@ parser.add_argument('--num-updates', type=int, default=1000, metavar='N',
 parser.add_argument('--no-cuda', action='store_true', default=False,
                     help='enables CUDA training')
 parser.add_argument('--model', default="lap",
-                    help='lap | dir | avg | mlp')
+                    help='lap | dir | avg | mlp | gcn')
 parser.add_argument('--dense', action='store_true', default=False)
 parser.add_argument('--adj', action='store_true', default=False)
 parser.add_argument('--first100', action='store_true', default=False)
@@ -54,17 +56,18 @@ args = parser.parse_args()
 args.cuda = not args.no_cuda and torch.cuda.is_available()
 
 def load_file(seqname):
-    sequence = np.load(seqname, encoding='latin1')
+    sequence = np.load(seqname, encoding='latin1', allow_pickle=True)
     new_sequence = []
     for i, frame in enumerate(sequence):
         frame['V'] = torch.from_numpy(frame['V'])
         frame['F'] = torch.from_numpy(frame['F'])
         if i < 10:
+            # frame['L'] = mesh.intrinsic_laplacian(frame['V'], frame['F'])
             #frame['L'] = utils.sp_sparse_to_pt_sparse(frame['L'])
             if args.model == "dir":
                 if not args.dense:
-                    frame['Di'] = utils.sp_sparse_to_pt_sparse(frame['Di'])
-                    frame['DiA'] = utils.sp_sparse_to_pt_sparse(frame['DiA'])
+                    frame['L']=None
+
             else:
                 frame['Di'] = None
                 frame['DiA'] = None
@@ -155,8 +158,8 @@ def sample_batch(sequences, is_training, is_fixed=False):
                 Di[b, :(4*num_faces), :(4*num_vertices)] = torch.from_numpy(di.todense())
                 DiA[b, :(4*num_vertices), :(4*num_faces)] =torch.from_numpy(dia.todense())
             else:
-                Di.append(sequences[ind][offset + input_frames - 1]['Di'])
-                DiA.append(sequences[ind][offset + input_frames - 1]['DiA'])
+                Di.append(utils.sp_sparse_to_pt_sparse(sequences[ind][offset + input_frames - 1]['Di']))
+                DiA.append(utils.sp_sparse_to_pt_sparse(sequences[ind][offset + input_frames - 1]['DiA']))
         else:
             L = sequences[ind][offset + input_frames - 1]['L']
             if args.dense:
@@ -188,6 +191,8 @@ elif args.model == "avg":
     model = AvgModel()
 elif args.model == "mlp":
     model = MlpModel()
+elif args.model == 'gcn':
+    model = GCNModel(args.layer)
 else:
     model = DirModel()
 
@@ -212,13 +217,13 @@ def main():
         for j in tqdm.tqdm(range(args.num_updates)):
             inputs, targets, mask, laplacian, Di, DiA, faces = sample_batch(sequences, True)
 
-            if args.model in ["lap", "avg", "mlp"]:
+            if args.model in ["lap", "avg", "mlp", "gcn"]:
                 outputs = model(laplacian, mask, inputs)
             else:
                 outputs = model(Di, DiA, mask, inputs)
 
             outputs = outputs * mask.expand_as(outputs)
-            loss = F.smooth_l1_loss(outputs, targets, size_average=False) / args.batch_size
+            loss = F.smooth_l1_loss(outputs, targets, reduction='sum') / args.batch_size
 
             early_optimizer.zero_grad()
             loss.backward()
@@ -247,7 +252,7 @@ def main():
                     outputs = model(Di, DiA, mask, inputs)
 
                 outputs = outputs * mask.expand_as(outputs)
-                loss = F.smooth_l1_loss(outputs, targets, size_average=False) / args.batch_size
+                loss = F.smooth_l1_loss(outputs, targets, reduction='sum') / args.batch_size
                 loss_value += loss.item()
 
             print("Test epoch {}, loss {}".format(epoch, loss_value / test_trials))
