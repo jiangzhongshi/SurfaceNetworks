@@ -92,16 +92,15 @@ class GraphConv1x1(nn.Module):
         batch_size, num_nodes, num_inputs = x.size()
         assert num_inputs == self.num_inputs
 
-        x = x.contiguous()
-        x = x.view(-1, self.num_inputs)
+      #  x = x.view(-1, self.num_inputs)
 
         if self.batch_norm == "pre":
-            x = self.bn(x)
+            x = self.bn(x.transpose(1,2)).transpose(1,2)
         x = self.fc(x)
         if self.batch_norm == "post":
-            x = self.bn(x)
+            x = self.bn(x.transpose(1,2)).transpose(1,2)
 
-        x = x.view(batch_size, num_nodes, self.num_outputs)
+        #x = x.view(batch_size, num_nodes, self.num_outputs)
         return x
 
 
