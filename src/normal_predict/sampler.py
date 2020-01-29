@@ -1,8 +1,7 @@
 import torch
 import os
 import sys
-sys.path.append(os.path.expanduser('~/Workspace/libigl/python'))
-import pyigl as igl
+import igl
 sys.path.append(os.path.join(os.path.dirname(__file__)))
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from utils import geom_utils
@@ -21,14 +20,10 @@ from sklearn.externals import joblib
 
 def read_npz(seq_names, args):
     with open(seq_names) as fp:
-        Xd, Xi = igl.eigen.MatrixXd, igl.eigen.MatrixXi
-        eV, eF, eVN = Xd(), Xi(), Xd()
-        igl.readOBJ(seq_names, eV,Xd(),eVN, eF, Xi(), Xi())
+        V, _, VN, F,_,_ = igl.read_obj(seq_names)
         new_frame = {}
         npfloat = np.float32
-        V, F = e2p(eV), e2p(eF)
         # Fix Degen,
-        VN = e2p(eVN).astype(npfloat)
         vdist = VN
 
         L, mass, Di, DiA, weight = None, None, None, None, None
